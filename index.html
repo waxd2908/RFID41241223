@@ -82,19 +82,21 @@
 
     <script>
         // Firebase 設定
+
         const firebaseConfig = {
             apiKey: "AIzaSyDcaCg9G3TRz1dJAb5ixmAAnhmT-1gALHc",
             authDomain: "sample-firebase-ai-app2-1772f.firebaseapp.com",
             databaseURL: "https://sample-firebase-ai-app2-1772f-default-rtdb.firebaseio.com",
             projectId: "sample-firebase-ai-app2-1772f",
-            storageBucket: "sample-firebase-ai-app2-1772f.firebasestorage.app",
+            storageBucket: "sample-firebase-ai-app2-1772f.appspot.com",
             messagingSenderId: "824252885125",
             appId: "1:824252885125:web:347ed0836149b7ea3aa1ec"
         };
+         // 初始化 Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+       
 
-        // 初始化 Firebase
-        const app = firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
 
         // 預設用戶資料，包含RFID標籤ID和相對應的資料
         const users = {
