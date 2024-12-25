@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RFID 系統</title>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 20px;
+        }
+        .container {
+            margin: 0 auto;
+            max-width: 600px;
+        }
+        .section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 2px solid #007BFF;
+            border-radius: 10px;
+            background-color: #f9f9f9;
+        }
+        .logs {
+            text-align: left;
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            background-color: #fefefe;
+            max-height: 200px;
+            overflow-y: scroll;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>RFID 門禁與支付系統</h1>
+        
+        <!-- 門禁驗票功能 -->
+        <div class="section" id="gate">
+            <h2 data-lang="gateTitle">門禁驗票</h2>
+            <p data-lang="gateDesc">模擬 RFID 手環感應進出場</p>
+            <button onclick="simulateGate()" data-lang="gateButton">感應手環</button>
+        </div>
+
+        <!-- 消費支付功能 -->
+        <div class="section" id="payment">
+            <h2 data-lang="paymentTitle">消費支付</h2>
+            <p data-lang="paymentDesc">模擬 RFID 手環進行消費扣款</p>
+            <button onclick="simulatePayment()" data-lang="paymentButton">進行消費</button>
+        </div>
+
+        <!-- 儲值功能 -->
+        <div class="section" id="recharge">
+            <h2 data-lang="rechargeTitle">儲值</h2>
+            <p data-lang="rechargeDesc">模擬 RFID 手環進行儲值</p>
+            <button onclick="simulateRecharge()" data-lang="rechargeButton">進行儲值</button>
+        </div>
+
+        <!-- 查詢餘額功能 -->
+        <div class="section" id="balance">
+            <h2 data-lang="balanceTitle">查詢餘額</h2>
+            <p data-lang="balanceDesc">提供使用者查詢餘額的功能</p>
+            <button onclick="checkBalance()" data-lang="balanceButton">查詢餘額</button>
+        </div>
+
+        <!-- 交易紀錄 -->
+        <div class="section" id="transactions">
+            <h2 data-lang="transactionsTitle">交易紀錄</h2>
+            <div class="logs" id="logs">
+                <h3 data-lang="logsTitle">系統紀錄</h3>
+                <ul id="log-list"></ul>
+            </div>
+        </div>
+
+        <!-- 語言切換 -->
+        <button id="btn-zh">中文</button>
+        <button id="btn-en">English</button>
+    </div>
+
+    <script>
+        // Firebase 設定
+        const firebaseConfig = {
+            apiKey: "AIzaSyDcaCg9G3TRz1dJAb5ixmAAnhmT-1gALHc",
+            authDomain: "sample-firebase-ai-app2-1772f.firebaseapp.com",
+            databaseURL: "https://sample-firebase-ai-app2-1772f-default-rtdb.firebaseio.com",
+            projectId: "sample-firebase-ai-app2-1772f",
+            storageBucket: "sample-firebase-ai-app2-1772f.firebasestorage.app",
+            messagingSenderId: "824252885125",
+            appId: "1:824252885125:web:347ed0836149b7ea3aa1ec"
+        };
+
+        // 初始化 Firebase
+        const app = firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        // 預設用戶資料，包含RFID標籤ID和相對應的資料
+        const users = {
+            "040f42c3b070": { name: "John Doe", balance: 1000, status: "未入場" },
+            "2c8db25e0101": { name: "Jane Smith", balance: 1500, status: "未入場" },
+            "300000123456": { name: "Alice Johnson", balance: 500, status: "未入場" },
+            "e280116d3f3a002c": { name: "Bob Brown", balance: 1200, status: "未入場" },
+            "1a2b3c4d5e6f": { name: "Charlie Lee", balance: 800, status: "未入場" },
+            "abc123456789": { name: "David Kim", balance: 300, status: "未入場" },
+            "1234567890ab": { name: "Eva Wang", balance: 100, status: "未入場" },
+            "0000aabbccdd": { name: "Frank Zhang", balance: 200, status: "未入場" }
+        };
+
+        // 儲存預設的用戶資料到Firebase
+        function initializeUsers() {
+            for (let rfid in users) {
+                db.ref('users/' + rfid).set(users[rfid]);
+            }
+        }
+
+        // 更新紀錄
+        function updateLogs(message) {
+            const logList = document.getElementById('log-list');
+            const logItem = document.createElement('li');
+            logItem.textContent = `${new Date().toLocaleTimeString()} - ${message}`;
+            logList.prepend(logItem);
+        }
+
+        // 模擬門禁驗票
+        async function simulateGate() {
+            const rfidInput = prompt("請輸入 RFID 手環編號：");
+
+            if (!rfidInput) {
+                alert("請輸入有效的 RFID 編號！");
+                return;
+            }
+
+            const userRef = firebase.database().ref(`users/${rfidInput}`);
+            const snapshot = await userRef.get();
+
+            if (snapshot.exists()) {
+                const user = snapshot.val();
+                if (user.status === "未入場") {
+                    userRef.update({ status: "已入場" });
+                    updateLogs(`歡迎 ${user.name} 入場！`);
+                } else {
+                    updateLogs(`${user.name} 已入場，重複感應！`);
+                }
+            } else {
+                updateLogs(`無效的 RFID 編號：${rfidInput}`);
+            }
+        }
+
+        // 模擬消費支付
+        async function simulatePayment() {
+            const rfidInput = prompt("請輸入 RFID 手環編號：");
+            const amountInput = prompt("請輸入消費金額：");
+
+            if (!rfidInput || !amountInput || isNaN(amountInput)) {
+                alert("輸入無效！");
+                return;
+            }
+
+            const userRef = firebase.database().ref(`users/${rfidInput}`);
+            const snapshot = await userRef.get();
+
+            if (snapshot.exists()) {
+                const user = snapshot.val();
+                const currentBalance = user.balance;
+
+                if (currentBalance >= amountInput) {
+                    const newBalance = currentBalance - amountInput;
+                    userRef.update({ balance: newBalance });
+
+                    updateLogs(`扣款成功！${user.name} 消費 ${amountInput} 元，餘額：${newBalance} 元`);
+                } else {
+                    updateLogs(`餘額不足！${user.name} 餘額：${currentBalance} 元，消費金額：${amountInput} 元`);
+                }
+            } else {
+                updateLogs(`無效的 RFID 編號：${rfidInput}`);
+            }
+        }
+
+        // 模擬儲值
+        async function simulateRecharge() {
+            const rfidInput = prompt("請輸入 RFID 手環編號：");
+            const amountInput = prompt("請輸入儲值金額：");
+
+            if (!rfidInput || !amountInput || isNaN(amountInput)) {
+                alert("輸入無效！");
+                return;
+            }
+
+            const userRef = firebase.database().ref(`users/${rfidInput}`);
+            const snapshot = await userRef.get();
+
+            if (snapshot.exists()) {
+                const user = snapshot.val();
+                const newBalance = user.balance + parseFloat(amountInput);
+                userRef.update({ balance: newBalance });
+
+                updateLogs(`儲值成功！${user.name} 儲值 ${amountInput} 元，餘額：${newBalance} 元`);
+            } else {
+                updateLogs(`無效的 RFID 編號：${rfidInput}`);
+            }
+        }
+
+        // 查詢餘額
+        async function checkBalance() {
+            const rfidInput = prompt("請輸入 RFID 手環編號：");
+
+            if (!rfidInput) {
+                alert("請輸入有效的 RFID 編號！");
+                return;
+            }
+
+            const userRef = firebase.database().ref(`users/${rfidInput}`);
+            const snapshot = await userRef.get();
+
+            if (snapshot.exists()) {
+                const user = snapshot.val();
+                updateLogs(`${user.name} 的餘額為：${user.balance} 元`);
+            } else {
+                updateLogs(`無效的 RFID 編號：${rfidInput}`);
+            }
+        }
+
+        // 初始化預設資料
+        initializeUsers();
+
+        // 語言切換功能
+        const langData = {
+            "gateTitle": { "zh": "門禁驗票", "en": "Gate Access" },
+            "gateDesc": { "zh": "模擬 RFID 手環感應進出場", "en": "Simulate RFID wristband for entry" },
+            "gateButton": { "zh": "感應手環", "en": "Scan RFID" },
+            "paymentTitle": { "zh": "消費支付", "en": "Payment" },
+            "paymentDesc": { "zh": "模擬 RFID 手環進行消費扣款", "en": "Simulate RFID wristband for payment" },
+            "paymentButton": { "zh": "進行消費", "en": "Make Payment" },
+            "rechargeTitle": { "zh": "儲值", "en": "Recharge" },
+            "rechargeDesc": { "zh": "模擬 RFID 手環進行儲值", "en": "Simulate RFID wristband for recharge" },
+            "rechargeButton": { "zh": "進行儲值", "en": "Recharge" },
+            "balanceTitle": { "zh": "查詢餘額", "en": "Check Balance" },
+            "balanceDesc": { "zh": "提供使用者查詢餘額的功能", "en": "Provide function to check balance" },
+            "balanceButton": { "zh": "查詢餘額", "en": "Check Balance" },
+            "transactionsTitle": { "zh": "交易紀錄", "en": "Transaction Logs" },
+            "logsTitle": { "zh": "系統紀錄", "en": "System Logs" }
+        };
+
+        document.getElementById("btn-zh").addEventListener("click", () => {
+            for (let key in langData) {
+                const element = document.querySelector(`[data-lang='${key}']`);
+                if (element) {
+                    element.textContent = langData[key].zh;
+                }
+            }
+        });
+
+        document.getElementById("btn-en").addEventListener("click", () => {
+            for (let key in langData) {
+                const element = document.querySelector(`[data-lang='${key}']`);
+                if (element) {
+                    element.textContent = langData[key].en;
+                }
+            }
+        });
+    </script>
+</body>
+</html>
